@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de Aforo</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --imagen-fondo: url("fondo.jpg");
+      --azul: #4f46e5;
+      --azul-claro: #6366f1;
+      --turquesa: #06b6d4;
+      --verde: #10b981;
+      --amarillo: #f59e0b;
+      --rosa: #ec4899;
+      --rojo: #ef4444;
+      --texto: #1e293b;
+      --texto-suave: #64748b;
+      --blanco: rgba(255, 255, 255, 0.90);
+      --borde: rgba(255, 255, 255, 0.75);
+      --sombra: 0 14px 35px rgba(30, 41, 59, 0.12);
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      color: var(--texto);
+      background:
+        linear-gradient(135deg, rgba(244, 247, 255, 0.91), rgba(255, 247, 252, 0.88)),
+        var(--imagen-fondo) center / cover fixed no-repeat;
+      padding-bottom: 30px;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 8% 12%, rgba(79, 70, 229, 0.15), transparent 25%),
+        radial-gradient(circle at 92% 18%, rgba(6, 182, 212, 0.12), transparent 22%),
+        radial-gradient(circle at 85% 88%, rgba(236, 72, 153, 0.12), transparent 26%);
+    }
+
+    header {
+      position: relative;
+      background: rgba(255, 255, 255, 0.76);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      color: var(--texto);
+      text-align: center;
+      padding: 22px 20px 19px;
+      border-bottom: 1px solid var(--borde);
+      box-shadow: 0 7px 22px rgba(30, 41, 59, 0.07);
+    }
+
+    header h1 {
+      font-size: clamp(1.35rem, 3vw, 1.75rem);
+      font-weight: 800;
+      letter-spacing: -0.035em;
+    }
+
+    header h1::after {
+      content: "";
+      display: block;
+      width: 42px;
+      height: 4px;
+      margin: 8px auto 0;
+      border-radius: 20px;
+      background: linear-gradient(90deg, var(--azul), var(--turquesa), var(--rosa));
+    }
+
+    main {
+      position: relative;
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 25px 18px 35px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 17px;
+    }
+
+    .panel {
+      position: relative;
+      overflow: hidden;
+      background: var(--blanco);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-radius: 21px;
+      padding: 21px;
+      text-align: center;
+      box-shadow: var(--sombra);
+      border: 1px solid var(--borde);
+    }
+
+    .panel::before {
+      content: "";
+      position: absolute;
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      top: -65px;
+      right: -35px;
+      background: rgba(99, 102, 241, 0.07);
+      pointer-events: none;
+    }
+
+    .panel:first-child {
+      grid-column: 1 / -1;
+      padding: 25px 22px;
+    }
+
+    .total-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .num {
+      display: inline-block;
+      font-size: clamp(3rem, 8vw, 4.5rem);
+      font-weight: 850;
+      line-height: 1.15;
+      padding: 2px 6px;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--azul), var(--turquesa));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .unit {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--texto-suave);
+    }
+
+    .of {
+      margin-top: 8px;
+      color: var(--texto-suave);
+      font-size: 0.86rem;
+    }
+
+    .of input {
+      width: 68px;
+      padding: 6px 5px;
+      margin-left: 3px;
+      font: inherit;
+      font-weight: 800;
+      text-align: center;
+      color: var(--texto);
+      background: #fff;
+      border: 1px solid #dbe2ee;
+      border-radius: 9px;
+      outline: none;
+    }
+
+    .of input:focus {
+      border-color: var(--azul-claro);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.10);
+    }
+
+    .meter-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 16px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--texto-suave);
+    }
+
+    .pct-badge {
+      font-weight: 850;
+      color: var(--azul);
+      font-size: 0.95rem;
+    }
+
+    .meter {
+      height: 12px;
+      margin: 6px 0 14px;
+      background: #e9edf5;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .meter div {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--azul), var(--turquesa), var(--verde));
+      border-radius: 20px;
+      transition: width 0.35s ease;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-weight: 750;
+      background: #ecfdf5;
+      color: #047857;
+      font-size: 0.82rem;
+    }
+
+    [data-state="warn"] .num {
+      background: linear-gradient(135deg, #d97706, #f59e0b);
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+
+    [data-state="warn"] .pct-badge {
+      color: #d97706;
+    }
+
+    [data-state="warn"] .meter div {
+      background: linear-gradient(90deg, #f59e0b, #f97316);
+    }
+
+    [data-state="warn"] .status {
+      background: #fff7df;
+      color: #a16207;
+    }
+
+    [data-state="full"] .num {
+      background: linear-gradient(135deg, #dc2626, #f43f5e);
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+
+    [data-state="full"] .pct-badge {
+      color: #dc2626;
+    }
+
+    [data-state="full"] .meter div {
+      background: linear-gradient(90deg, #ef4444, #e11d48);
+    }
+
+    [data-state="full"] .status {
+      background: #fff0f2;
+      color: #be123c;
+    }
+
+    .men {
+      border-top: 4px solid var(--azul);
+    }
+
+    .women {
+      border-top: 4px solid var(--rosa);
+    }
+
+    .group-title {
+      font-size: 1rem;
+      font-weight: 800;
+    }
+
+    .men .group-title {
+      color: #4338ca;
+    }
+
+    .women .group-title {
+      color: #db2777;
+    }
+
+    .count {
+      display: inline-block;
+      margin: 10px auto 14px;
+      padding: 2px 6px;
+      font-size: 2.5rem;
+      font-weight: 850;
+      line-height: 1.2;
+      letter-spacing: -0.03em;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      font: inherit;
+      cursor: pointer;
+      border: none;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.83rem;
+      padding: 8px 11px;
+      background: #f1f4f8;
+      color: var(--texto);
+      transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+
+    button:hover:not(:disabled) {
+      background: #e7ebf2;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 12px rgba(30, 41, 59, 0.10);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+    }
+
+    .btn-add-men {
+      background: var(--azul);
+      color: #fff;
+    }
+
+    .btn-add-men:hover:not(:disabled) {
+      background: #4338ca;
+    }
+
+    .btn-add-women {
+      background: var(--rosa);
+      color: #fff;
+    }
+
+    .btn-add-women:hover:not(:disabled) {
+      background: #db2777;
+    }
+
+    .reset-all {
+      grid-column: 1 / -1;
+      justify-self: center;
+      background: rgba(255, 255, 255, 0.87);
+      color: #475569;
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      padding: 9px 18px;
+      font-size: 0.82rem;
+    }
+
+    .reset-all:hover:not(:disabled) {
+      background: #fff;
+      color: var(--rojo);
+    }
+
+    dialog {
+      margin: auto;
+      padding: 23px;
+      border: 0;
+      border-radius: 18px;
+      max-width: 335px;
+      width: calc(100% - 32px);
+      box-shadow: 0 25px 65px rgba(15, 23, 42, 0.25);
+    }
+
+    dialog::backdrop {
+      background: rgba(15, 23, 42, 0.42);
+      backdrop-filter: blur(4px);
+    }
+
+    dialog h2 {
+      margin-bottom: 7px;
+      font-size: 1.1rem;
+    }
+
+    dialog p {
+      color: var(--texto-suave);
+      font-size: 0.86rem;
+      line-height: 1.5;
+      margin-bottom: 17px;
+    }
+
+    .dialog-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .btn-danger {
+      background: var(--rojo);
+      color: #fff;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    @media (max-width: 620px) {
+      main {
+        grid-template-columns: 1fr;
+        padding-top: 18px;
+      }
+
+      .panel:first-child,
+      .reset-all {
+        grid-column: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Control de Aforo</h1>
+    <p style="margin-top:5px;color:#64748b;font-size:.78rem;">Control sencillo y rápido de la capacidad</p>
+  </header>
+
+  <main id="app" data-state="ok">
+    <section class="panel">
+      <div class="total-row">
+        <span class="num" id="total">0</span>
+        <span class="unit">👥 <span id="total-label">Personas</span></span>
+      </div>
+      <p class="of">Aforo máximo:
+        <input type="number" id="cap" min="1" max="100000" value="50">
+      </p>
+      <div class="meter-header">
+        <span>Porcentaje de ocupación</span>
+        <span id="pct-val" class="pct-badge">0%</span>
+      </div>
+      <div class="meter"><div id="fill"></div></div>
+      <div class="status" id="status"><span id="status-text">Hay sitio disponible</span></div>
+    </section>
+
+    <section class="panel men">
+      <div class="group-title">👨 <span id="men-label">Hombres</span></div>
+      <div class="count"><span id="men-val">0</span></div>
+      <div class="controls">
+        <button data-group="men" data-delta="-1">➖ 1</button>
+        <button class="btn-add-men" data-group="men" data-delta="1">➕ 1</button>
+        <button data-zero="men">🔄 Cero</button>
+      </div>
+    </section>
+
+    <section class="panel women">
+      <div class="group-title">👩 <span id="women-label">Mujeres</span></div>
+      <div class="count"><span id="women-val">0</span></div>
+      <div class="controls">
+        <button data-group="women" data-delta="-1">➖ 1</button>
+        <button class="btn-add-women" data-group="women" data-delta="1">➕ 1</button>
+        <button data-zero="women">🔄 Cero</button>
+      </div>
+    </section>
+
+    <button class="reset-all" id="reset">🗑️ Reiniciar todo</button>
+  </main>
+
+  <dialog id="confirm">
+    <h2>¿Reiniciar todo?</h2>
+    <p>Todos los contadores volverán a 0. Esta acción no se puede deshacer.</p>
+    <div class="dialog-actions">
+      <button id="cancel">Cancelar</button>
+      <button class="btn-danger" id="accept">Reiniciar</button>
+    </div>
+  </dialog>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const DEFAULT_CAP = 50;
+      const WARN_RATIO = 0.8;
+      const STORE_KEY = "aforo-data";
+
+      const state = { men: 0, women: 0, cap: DEFAULT_CAP };
+      const total = () => state.men + state.women;
+
+      const $ = (id) => document.getElementById(id);
+      const el = {
+        app: $("app"),
+        total: $("total"),
+        totalLabel: $("total-label"),
+        fill: $("fill"),
+        pctVal: $("pct-val"),
+        statusText: $("status-text"),
+        cap: $("cap"),
+        men: $("men-val"),
+        women: $("women-val"),
+        menLabel: $("men-label"),
+        womenLabel: $("women-label"),
+        reset: $("reset"),
+        dialog: $("confirm")
+      };
+
+      const stepBtns = [...document.querySelectorAll("[data-group]")];
+      const zeroBtns = [...document.querySelectorAll("[data-zero]")];
+
+      function load() {
+        try {
+          const s = JSON.parse(localStorage.getItem(STORE_KEY));
+          if (s) {
+            state.men = Math.max(0, s.men | 0);
+            state.women = Math.max(0, s.women | 0);
+            state.cap = Math.max(1, s.cap | 0) || DEFAULT_CAP;
+          }
+        } catch (_) {}
+      }
+
+      function save() {
+        try {
+          localStorage.setItem(STORE_KEY, JSON.stringify(state));
+        } catch (_) {}
+      }
+
+      function getLevel() {
+        const r = total() / state.cap;
+        return r >= 1 ? "full" : r >= WARN_RATIO ? "warn" : "ok";
+      }
+
+      const MESSAGES = {
+        ok: "Hay sitio disponible",
+        warn: "Casi completo",
+        full: "AFORO COMPLETO"
+      };
+
+      function render() {
+        const t = total();
+        const level = getLevel();
+        const pct = Math.min(100, Math.round((t / state.cap) * 100));
+
+        el.total.textContent = t;
+        el.men.textContent = state.men;
+        el.women.textContent = state.women;
+
+        el.totalLabel.textContent = t === 1 ? "Persona" : "Personas";
+        el.menLabel.textContent = state.men === 1 ? "Hombre" : "Hombres";
+        el.womenLabel.textContent = state.women === 1 ? "Mujer" : "Mujeres";
+
+        el.cap.value = state.cap;
+        el.fill.style.width = pct + "%";
+        el.pctVal.textContent = pct + "%";
+        el.app.dataset.state = level;
+        el.statusText.textContent = MESSAGES[level];
+
+        stepBtns.forEach((b) => {
+          const isAdd = Number(b.dataset.delta) > 0;
+          b.disabled = isAdd ? level === "full" : state[b.dataset.group] === 0;
+        });
+
+        zeroBtns.forEach((b) => {
+          b.disabled = state[b.dataset.zero] === 0;
+        });
+
+        el.reset.disabled = t === 0;
+        save();
+      }
+
+      function change(group, delta) {
+        if (delta > 0 && total() >= state.cap) return;
+        if (delta < 0 && state[group] === 0) return;
+        state[group] += delta;
+        render();
+      }
+
+      stepBtns.forEach((b) => {
+        b.addEventListener("click", () => change(b.dataset.group, Number(b.dataset.delta)));
+      });
+
+      zeroBtns.forEach((b) => {
+        b.addEventListener("click", () => {
+          state[b.dataset.zero] = 0;
+          render();
+        });
+      });
+
+      el.cap.addEventListener("input", () => {
+        const v = parseInt(el.cap.value, 10);
+        if (Number.isFinite(v) && v >= 1) state.cap = Math.min(v, 100000);
+        render();
+      });
+
+      el.reset.addEventListener("click", () => el.dialog.showModal());
+      $("cancel").addEventListener("click", () => el.dialog.close());
+      $("accept").addEventListener("click", () => {
+        state.men = 0;
+        state.women = 0;
+        render();
+        el.dialog.close();
+      });
+
+      load();
+      render();
+    })();
+  </script>
+</body>
+</html>
